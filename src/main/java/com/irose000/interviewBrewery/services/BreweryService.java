@@ -10,13 +10,19 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.lang.reflect.Field;
 
+/**
+ * 
+ */
 @Service
 @Slf4j
 public class BreweryService {
@@ -71,9 +77,31 @@ public class BreweryService {
 	 */
 	public List<Brewery> getByDistance(String coordinates) {
 		String[] coords = coordinates.split(",");
-		Double latitude = Double.parseDouble(coords[0].trim());
-		Double longitude = Double.parseDouble(coords[1].trim());
+		try {
+			Double latitude = Double.parseDouble(coords[0].trim());
+			Double longitude = Double.parseDouble(coords[1].trim());
+			return this.repository.findByDistance(latitude, longitude);
+		} catch (NumberFormatException e) {
+			log.info("Error: unable to process non-numeric coordinate values");
+			return null;
+		}
+	}
+	
+	/**
+	 * Helper method to validate that user-supplied filters match field names
+	 * 
+	 * @param entityClass The entity class whose fields will be matched
+	 * @param params A {@link Map} of {@link String}, {@link String} where the keys are field names of entityClass and the values are field values to match
+	 * @return boolean
+	 */
+	public boolean areValidEntityFields(Class<?> entityClass, Map<String, String> params) {
+		Set<String> entityFields = Stream.of(entityClass.getDeclaredFields())
+				.map(Field::getName)
+				.collect(Collectors.toSet());
 		
-		return this.repository.findByDistance(latitude, longitude);
+		Set<String> allowedSpecialKeys = Set.of("by_dist");
+		
+		return params.keySet().stream()
+				.allMatch(key -> entityFields.contains(key) || allowedSpecialKeys.contains(key));
 	}
 }

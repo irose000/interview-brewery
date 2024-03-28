@@ -28,8 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BreweryController {
 	private final BreweryService breweryService;
 	private final BreweryRepository repository;
-	private static final String SEARCH_DESCRIPTION = "For inequality comparisons, append _gt or _lt to the attribute name."
-			+ "\nList of available filters:"
+	private static final String SEARCH_DESCRIPTION = "List of available filters:"
 			+ "		\nname"
 			+ "		\ntype: []"
 			+ "		\naddress"
@@ -44,7 +43,6 @@ public class BreweryController {
 			{
 			  "by_dist": "45.490507,-122.497291",
 			  "type": "nano",
-			  "per_page": "5"
 			}
 			""";
 	
@@ -91,15 +89,22 @@ public class BreweryController {
 		return new ResponseEntity<>(this.breweryService.getByDistance(coordinates), HttpStatus.OK);
 	}
 	
+	// TODO implement pagination
 	@GetMapping("/search")
 	@Operation(summary = "Custom search with any combination of attributes.")
-	public ResponseEntity<List<Brewery>> getCustom(@RequestParam @Parameter(description = SEARCH_DESCRIPTION, required = true, example = EXAMPLE_SEARCH) Map<String, String> params) {
+	public ResponseEntity<?> getCustom(@RequestParam @Parameter(description = SEARCH_DESCRIPTION, required = true, example = EXAMPLE_SEARCH) Map<String, String> params) {
+		if (!this.breweryService.areValidEntityFields(Brewery.class, params)) {
+			return ResponseEntity.badRequest().body("Invalid field names in filters");
+		}
 		Specification<Brewery> spec = new EntitySpecification(params);
 		List<Brewery> filteredResults = this.repository.findAll(spec);
 		
 		String latLong = params.get("by_dist");
 		if (latLong != null) {
 			List<Brewery> sortedByDistance = this.breweryService.getByDistance(latLong);
+			if (sortedByDistance == null) {
+				return ResponseEntity.badRequest().body("Invalid coordinates provided for latitude and/or longitude");
+			}
 			
 			List<Brewery> combinedResults = sortedByDistance.stream()
 					.filter(filteredResults::contains)
