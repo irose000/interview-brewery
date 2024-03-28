@@ -1,3 +1,2 @@
- # Gradle
- build/
- .gradle/
+build/
+.gradle/
