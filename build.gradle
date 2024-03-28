@@ -1,0 +1,26 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version "$springVersion"
+    id "io.spring.dependency-management" version "1.0.11.RELEASE"
+}
+
+group = 'com.irose000'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation "org.springframework.boot:spring-boot-starter:$springVersion"
+	implementation "org.springframework.boot:spring-boot-starter-web:$springVersion"
+	implementation 'org.springframework.boot:spring-boot-starter-json'
+	testImplementation "org.springframework.boot:spring-boot-starter-test:$springVersion"
+
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+	
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.h2database:h2'
+
+	compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
