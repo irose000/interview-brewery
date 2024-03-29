@@ -5,6 +5,8 @@ import org.springdoc.core.converters.models.Sort;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,6 +25,9 @@ import java.lang.reflect.Field;
 /**
  * 
  */
+/**
+ * 
+ */
 @Service
 @Slf4j
 public class BreweryService {
@@ -34,6 +39,11 @@ public class BreweryService {
 	public BreweryService() {
 	}
 	
+	
+	/**
+	 * Using openbrewerydb's documented max page size of 200, pull every page from the remote database.
+	 * This method is called on init from the {@link BreweryController} via a "@PostConstruct" tag
+	 */
 	public void preLoadDatabase() {
 		int counter = 1;
 		String page = "?page=%d&per_page=200";
@@ -65,8 +75,8 @@ public class BreweryService {
 	 * 
 	 * @return {@link List} of all {@link Brewery} objects
 	 */
-	public List<Brewery> getAll() {
-		return this.repository.findAll();
+	public Page<Brewery> getAll(Pageable pageable) {
+		return this.repository.findAll(pageable);
 	}
 	
 	/**
@@ -88,6 +98,24 @@ public class BreweryService {
 	}
 	
 	/**
+	 * Fetches a page from a sorted list of breweries, starting with the closest to the given location.
+	 * 
+	 * @param coordinates Latitude and longitude together as a comma-separated {@link String}
+	 * @return {@link List} of {@link Brewery} ordered by distance to the given coordinates
+	 */
+	public Page<Brewery> getByDistance(String coordinates, Pageable pageable) {
+		String[] coords = coordinates.split(",");
+		try {
+			Double latitude = Double.parseDouble(coords[0].trim());
+			Double longitude = Double.parseDouble(coords[1].trim());
+			return this.repository.findByDistance(latitude, longitude, pageable);
+		} catch (NumberFormatException e) {
+			log.info("Error: unable to process non-numeric coordinate values");
+			return null;
+		}
+	}
+	
+	/**
 	 * Helper method to validate that user-supplied filters match field names
 	 * 
 	 * @param entityClass The entity class whose fields will be matched
@@ -95,6 +123,11 @@ public class BreweryService {
 	 * @return boolean
 	 */
 	public boolean areValidEntityFields(Class<?> entityClass, Map<String, String> params) {
+		// debug
+		for (String field : params.keySet()) {
+			System.out.println("params key: " + field);
+		}
+		
 		Set<String> entityFields = Stream.of(entityClass.getDeclaredFields())
 				.map(Field::getName)
 				.collect(Collectors.toSet());

@@ -2,6 +2,8 @@ package com.irose000.interviewBrewery.models;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -9,8 +11,11 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface BreweryRepository extends JpaRepository<Brewery, String>, JpaSpecificationExecutor<Brewery> {
-	@Query("SELECT b FROM Brewery b WHERE b.latitude IS NOT NULL AND b.longitude IS NOT NULL ORDER BY SQRT(POWER((?1 - b.latitude), 2) + POWER((?2 - b.longitude), 2)) ASC LIMIT 50")
+	@Query("SELECT b FROM Brewery b WHERE b.latitude IS NOT NULL AND b.longitude IS NOT NULL ORDER BY SQRT(POWER((?1 - b.latitude), 2) + POWER((?2 - b.longitude), 2)) ASC")
 	List<Brewery> findByDistance(Double latitude, Double longitude);
+	
+	@Query("SELECT b FROM Brewery b WHERE b.latitude IS NOT NULL AND b.longitude IS NOT NULL ORDER BY SQRT(POWER((?1 - b.latitude), 2) + POWER((?2 - b.longitude), 2)) ASC")
+	Page<Brewery> findByDistance(Double latitude, Double longitude, Pageable pageable);
 	
 	List<Brewery> findByType(String type);
 	

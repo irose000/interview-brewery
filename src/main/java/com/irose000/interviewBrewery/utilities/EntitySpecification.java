@@ -1,4 +1,6 @@
-package com.irose000.interviewBrewery.models;
+package com.irose000.interviewBrewery.utilities;
+
+import com.irose000.interviewBrewery.models.Brewery;
 
 import java.util.ArrayList;
 import java.util.List;

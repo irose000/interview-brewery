@@ -2,6 +2,8 @@ package com.irose000.interviewBrewery.controllers;
 
 import com.irose000.interviewBrewery.models.*;
 import com.irose000.interviewBrewery.services.*;
+import com.irose000.interviewBrewery.utilities.*;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.annotation.PostConstruct;
@@ -11,13 +13,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springdoc.core.converters.models.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-//import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,9 +48,10 @@ public class BreweryController {
 	private static final String EXAMPLE_SEARCH = """
 			{
 			  "by_dist": "45.490507,-122.497291",
-			  "type": "nano",
+			  "type": "micro"
 			}
 			""";
+	private static final String EXAMPLE_PAGE = "{\"page\": 0, \"size\": 10}";
 	
 	/**
 	 * An example location to use for searching by distance
@@ -75,8 +82,8 @@ public class BreweryController {
 	 */
 	@GetMapping("")
 	@Operation(summary = "Fetch all breweries")
-	public ResponseEntity<List<Brewery>> getAll() {
-		return new ResponseEntity<>(this.breweryService.getAll(), HttpStatus.OK);
+	public ResponseEntity<?> getAll(Pageable pageable) {
+		return new ResponseEntity<>(this.breweryService.getAll(pageable), HttpStatus.OK);
 	}
 	
 	/**
@@ -85,14 +92,25 @@ public class BreweryController {
 	 */
 	@GetMapping("?by_dist=")
 	@Operation(summary = "Fetch breweries near me")
-	public ResponseEntity<List<Brewery>> getByDist(@Parameter(description = "latitude,longitude", required = false, example = EXAMPLE_LOCATION) String coordinates) {
-		return new ResponseEntity<>(this.breweryService.getByDistance(coordinates), HttpStatus.OK);
+	public ResponseEntity<?> getByDist(@Parameter(description = "latitude,longitude", required = false, example = EXAMPLE_LOCATION) String coordinates, Pageable pageable) {
+		return new ResponseEntity<>(this.breweryService.getByDistance(coordinates, pageable), HttpStatus.OK);
 	}
 	
-	// TODO implement pagination
 	@GetMapping("/search")
 	@Operation(summary = "Custom search with any combination of attributes.")
-	public ResponseEntity<?> getCustom(@RequestParam @Parameter(description = SEARCH_DESCRIPTION, required = true, example = EXAMPLE_SEARCH) Map<String, String> params) {
+	public ResponseEntity<?> getCustom(
+			@RequestParam 
+			@Parameter(description = SEARCH_DESCRIPTION, example = EXAMPLE_SEARCH) 
+			Map<String, String> params, 
+			@PageableDefault(page = 0, size = 10)
+			@Parameter(name = "pageable", description = "Pagination parameters", example = EXAMPLE_PAGE) 
+			Pageable pageable) {
+		
+		// For some reason Spring is not automatically separating params from pageable
+		params.remove("page");
+		params.remove("size");
+		params.remove("sort");
+		
 		if (!this.breweryService.areValidEntityFields(Brewery.class, params)) {
 			return ResponseEntity.badRequest().body("Invalid field names in filters");
 		}
@@ -110,9 +128,18 @@ public class BreweryController {
 					.filter(filteredResults::contains)
 					.collect(Collectors.toList());
 			
-			return new ResponseEntity<>(combinedResults, HttpStatus.OK);
+			// manually get page and set pagination metadata, since we can't automatically get valid pagination data when post-processing or combining two repository queries
+			List<Brewery> paginatedCombinedResults = PaginationUtility.getPage(combinedResults, pageable.getPageNumber(), pageable.getPageSize());
+			Page<Brewery> onePage = new PageImpl<>(
+					paginatedCombinedResults,
+					PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()),
+					paginatedCombinedResults.size()
+			);
+			
+			return new ResponseEntity<>(onePage, HttpStatus.OK);
+		} else {
+			return ResponseEntity.badRequest().body("Invalid coordinates for distance sorting");
 		}
-		return new ResponseEntity<>(filteredResults, HttpStatus.OK);
 	}
 	
 }
