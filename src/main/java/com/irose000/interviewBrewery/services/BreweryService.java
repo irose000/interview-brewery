@@ -1,12 +1,16 @@
 package com.irose000.interviewBrewery.services;
 
 import com.irose000.interviewBrewery.models.*;
-import org.springdoc.core.converters.models.Sort;
+import com.irose000.interviewBrewery.utilities.PaginationUtility;
+
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -108,7 +112,17 @@ public class BreweryService {
 		try {
 			Double latitude = Double.parseDouble(coords[0].trim());
 			Double longitude = Double.parseDouble(coords[1].trim());
-			return this.repository.findByDistance(latitude, longitude, pageable);
+			
+			List<Brewery> allResults = this.repository.findByDistance(latitude, longitude);
+			
+			List<Brewery> onePageList = PaginationUtility.getPage(allResults, pageable.getPageNumber(), pageable.getPageSize());
+			Page<Brewery> onePage = new PageImpl<>(
+					onePageList,
+					PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.unsorted()),
+					onePageList.size()
+			);
+			
+			return onePage;
 		} catch (NumberFormatException e) {
 			log.info("Error: unable to process non-numeric coordinate values");
 			return null;

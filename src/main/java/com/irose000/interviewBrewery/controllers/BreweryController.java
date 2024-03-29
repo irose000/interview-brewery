@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Slf4j
-@RequestMapping("/breweries")
+//@RequestMapping("/breweries")
 public class BreweryController {
 	private final BreweryService breweryService;
 	private final BreweryRepository repository;
@@ -80,9 +80,13 @@ public class BreweryController {
 	/**
 	 * @return @List of all {@link Brewery} objects
 	 */
-	@GetMapping("")
+	@GetMapping("/breweries")
 	@Operation(summary = "Fetch all breweries")
-	public ResponseEntity<?> getAll(Pageable pageable) {
+	public ResponseEntity<?> getAll(
+			@PageableDefault(page = 0, size = 10)
+			@Parameter(name = "pageable", description = "Pagination parameters", example = EXAMPLE_PAGE) 
+			Pageable pageable) {
+		
 		return new ResponseEntity<>(this.breweryService.getAll(pageable), HttpStatus.OK);
 	}
 	
@@ -90,13 +94,19 @@ public class BreweryController {
 	 * @param coordinates Latitude and longitude together as one {@link String}
 	 * @return {@link List} of {@link Brewery}, sorted by distance to given coordinates
 	 */
-	@GetMapping("?by_dist=")
+	@GetMapping("/breweries?by_dist=")
 	@Operation(summary = "Fetch breweries near me")
-	public ResponseEntity<?> getByDist(@Parameter(description = "latitude,longitude", required = false, example = EXAMPLE_LOCATION) String coordinates, Pageable pageable) {
-		return new ResponseEntity<>(this.breweryService.getByDistance(coordinates, pageable), HttpStatus.OK);
+	public ResponseEntity<?> getByDist(
+			@Parameter(description = "latitude,longitude", example = EXAMPLE_LOCATION) 
+			String by_dist, 
+			@PageableDefault(page = 0, size = 10)
+			@Parameter(name = "pageable", description = "Pagination parameters", example = EXAMPLE_PAGE)
+			Pageable pageable) {
+		
+		return new ResponseEntity<>(this.breweryService.getByDistance(by_dist, pageable), HttpStatus.OK);
 	}
 	
-	@GetMapping("/search")
+	@GetMapping("/breweries/search")
 	@Operation(summary = "Custom search with any combination of attributes.")
 	public ResponseEntity<?> getCustom(
 			@RequestParam 
